@@ -19,7 +19,11 @@ TRACE=/tmp/chronolens-acceptance.log
 pkill -f chronolens-backend 2>/dev/null || true
 sleep 1
 
-"$APP" > "$TRACE" 2>&1 &
+# Launch with cwd=/ exactly like Finder does (GUI apps inherit the root
+# directory as working directory). A relative data-dir path would break
+# here on the read-only system volume — this is the regression that
+# shipped as 'Load failed' on every store-touching request.
+(cd / && "$ROOT/$APP" > "$TRACE" 2>&1) &
 APP_PID=$!
 trap 'kill $APP_PID 2>/dev/null || true; pkill -f chronolens-backend 2>/dev/null || true' EXIT
 

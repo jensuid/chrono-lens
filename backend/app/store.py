@@ -5,6 +5,8 @@ and persisted as parquet under a per-dataset directory. Every analysis
 endpoint is a pure read over the stored frame; nothing mutates it.
 """
 
+import os
+import sys
 import uuid
 from pathlib import Path
 
@@ -16,11 +18,25 @@ from .errors import not_found
 MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 
 
+def _default_data_dir() -> Path:
+    """Per-user writable storage.
+
+    Never a relative path: Finder-launched apps run with cwd=/ (a
+    read-only volume on modern macOS), and a relative 'appdata' would
+    try to create /appdata and crash every store-touching endpoint.
+    """
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "ChronoLens"
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA") or str(Path.home())
+        return Path(base) / "ChronoLens"
+    base = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
+    return Path(base) / "chronolens"
+
+
 def _data_dir() -> Path:
     """The dataset storage directory (overridable for tests via env)."""
-    import os
-
-    root = Path(os.environ.get("CHRONOLENS_DATA_DIR", "appdata"))
+    root = Path(os.environ.get("CHRONOLENS_DATA_DIR") or _default_data_dir())
     root.mkdir(parents=True, exist_ok=True)
     return root
 
@@ -109,19 +125,49 @@ def create_dataset(frame: pd.DataFrame, warnings: list[str]) -> Dataset:
 
 
 def list_datasets() -> list[dict]:
-    """Minimal metadata for every stored dataset."""
+    """Minimal metadata for every stored dataset.
+
+    Reads only the small warnings sidecar plus parquet *metadata*
+    (row count/dtypes) instead of loading every full frame — listing
+    must stay fast as datasets accumulate.
+    """
     import json
+
+    import pyarrow.parquet as pq
 
     out = []
     for path in sorted(_data_dir().glob("*.parquet")):
         dataset_id = path.stem
-        ds = Dataset.load(dataset_id)
+        warnings: list = []
+        warnings_path = _data_dir() / f"{dataset_id}.warnings.json"
+        if warnings_path.exists():
+            warnings = json.loads(warnings_path.read_text())
+        meta = pq.read_metadata(path)
         out.append(
             {
                 "id": dataset_id,
-                "rows": int(len(ds.frame)),
-                "warnings": ds.warnings,
-                "timeRange": ds.time_range(),
+                "rows": meta.num_rows,
+                "warnings": warnings,
+                "timeRange": _parquet_time_range(path),
             }
         )
     return out
+
+
+def _parquet_time_range(path: Path) -> dict:
+    """First/last timestamp from parquet statistics, without loading data."""
+    import pyarrow.parquet as pq
+
+    meta = pq.read_metadata(path)
+    names = meta.schema.names
+    dt_col = next((n for n in names if "timestamp" in str(n).lower()), names[0])
+    for i in range(meta.num_row_groups):
+        stats = meta.row_group(i).column(names.index(dt_col)).statistics
+        if stats is not None and stats.has_min_max:
+            return {
+                "column": str(dt_col),
+                "first": int(pd.Timestamp(stats.min).value // 1_000_000),
+                "last": int(pd.Timestamp(stats.max).value // 1_000_000),
+                "rows": int(meta.num_rows),
+            }
+    return {"column": str(dt_col), "first": None, "last": None, "rows": int(meta.num_rows)}

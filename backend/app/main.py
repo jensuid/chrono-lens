@@ -43,6 +43,34 @@ async def api_error_handler(_: Request, exc: ApiError) -> JSONResponse:
     )
 
 
+@app.middleware("http")
+async def catch_all_errors(request: Request, call_next):
+    """Turn any unhandled exception into the uniform envelope.
+
+    Without this, a server-side failure produces FastAPI's default 500
+    response, which (a) carries no CORS headers, so the packaged webview
+    reports the generic 'Load failed' instead of the actual error, and
+    (b) hides the exception entirely from the client. Keeping the
+    middleware inside CORSMiddleware means error responses are still
+    CORS-enabled and the real message reaches the UI.
+    """
+    try:
+        return await call_next(request)
+    except Exception as exc:  # noqa: BLE001
+        import traceback
+
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": f"{type(exc).__name__}: {exc}",
+                }
+            },
+        )
+
+
 @app.get("/api/health")
 async def health():
     """Liveness for the Tauri shell's sidecar readiness check."""
