@@ -108,6 +108,18 @@ all three formats, with injected anomalies whose locations are listed in
   serialized as `null`.
 - Backend tests: `cd backend && .venv/bin/python -m pytest`.
 
+## Data Storage
+
+Imported datasets persist as parquet under a per-user directory:
+
+- macOS: `~/Library/Application Support/ChronoLens`
+- Linux: `~/.local/share/chronolens`
+- Windows: `%APPDATA%/ChronoLens`
+
+The location is resolved absolutely at runtime (never relative to the
+process working directory) and can be overridden for development or
+testing with the `CHRONOLENS_DATA_DIR` environment variable.
+
 ## Known Limitations and Deferred Work
 
 - **First launch is slow (~1 minute):** the sidecar is a PyInstaller

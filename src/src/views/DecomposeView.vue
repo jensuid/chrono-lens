@@ -3,7 +3,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { postJson } from '../api.js'
 import TimeChart from '../components/TimeChart.vue'
-import { COLORS, lineChartOption, lineSeries } from '../components/chartOptions.js'
+import { COLORS, AXIS_STYLE, lineChartOption, lineSeries } from '../components/chartOptions.js'
 
 const props = defineProps({ dataset: { type: Object, default: null } })
 
@@ -32,8 +32,8 @@ const acfOption = computed(() => {
   return {
     tooltip: { trigger: 'axis' },
     grid: { left: 50, right: 20, top: 24, bottom: 36 },
-    xAxis: { type: 'category', data: lags, name: 'lag' },
-    yAxis: { type: 'value' },
+    xAxis: { type: 'category', data: lags, name: 'lag', ...AXIS_STYLE },
+    yAxis: { type: 'value', ...AXIS_STYLE },
     series: [
       {
         type: 'bar',
@@ -43,13 +43,13 @@ const acfOption = computed(() => {
       {
         type: 'line',
         data: lags.map(() => band),
-        lineStyle: { type: 'dashed', color: '#888' },
+        lineStyle: { type: 'dashed', color: '#94a3b8' },
         symbol: 'none',
       },
       {
         type: 'line',
         data: lags.map(() => -band),
-        lineStyle: { type: 'dashed', color: '#888' },
+        lineStyle: { type: 'dashed', color: '#94a3b8' },
         symbol: 'none',
       },
     ],
@@ -63,12 +63,12 @@ const pacfOption = computed(() => {
   return {
     tooltip: { trigger: 'axis' },
     grid: { left: 50, right: 20, top: 24, bottom: 36 },
-    xAxis: { type: 'category', data: lags, name: 'lag' },
-    yAxis: { type: 'value' },
+    xAxis: { type: 'category', data: lags, name: 'lag', ...AXIS_STYLE },
+    yAxis: { type: 'value', ...AXIS_STYLE },
     series: [
       { type: 'bar', data: acfData.value.pacf, itemStyle: { color: COLORS[2] } },
-      { type: 'line', data: lags.map(() => band), lineStyle: { type: 'dashed', color: '#888' }, symbol: 'none' },
-      { type: 'line', data: lags.map(() => -band), lineStyle: { type: 'dashed', color: '#888' }, symbol: 'none' },
+      { type: 'line', data: lags.map(() => band), lineStyle: { type: 'dashed', color: '#94a3b8' }, symbol: 'none' },
+      { type: 'line', data: lags.map(() => -band), lineStyle: { type: 'dashed', color: '#94a3b8' }, symbol: 'none' },
     ],
   }
 })

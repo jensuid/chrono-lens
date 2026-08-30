@@ -46,7 +46,7 @@ async function runSelfTest() {
 
 <style scoped>
 .dbg-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+  position: fixed; inset: 0; background: rgba(28, 43, 58, 0.45);
   display: flex; align-items: center; justify-content: center; z-index: 100;
 }
 .dbg {

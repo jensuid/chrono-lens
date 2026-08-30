@@ -32,7 +32,7 @@ const chartOption = computed(() => {
   return lineChartOption([
     { name: column.value, type: 'line', showSymbol: false, data: base, lineStyle: { opacity: 0.85 } },
     scatterSeries('anomalies', result.value.anomalies, {
-      itemStyle: { color: '#ff5d73' },
+      itemStyle: { color: '#e11d48' },
       symbolSize: 10,
     }),
   ])

@@ -156,11 +156,14 @@ aside {
   gap: 18px;
   overflow-y: auto;
 }
-h1 { font-size: 20px; margin: 0; letter-spacing: 0.5px; }
-.tagline { margin: 2px 0 0; color: var(--accent); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; }
+h1 {
+  font-size: 20px; margin: 0; letter-spacing: 0.5px;
+  color: var(--accent);
+}
+.tagline { margin: 2px 0 0; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; }
 nav { display: flex; flex-direction: column; gap: 6px; }
 nav button { text-align: left; width: 100%; }
-nav button.active { border-color: var(--accent); color: var(--accent); }
+nav button.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 nav button.disabled { opacity: 0.45; }
 .datasets ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .datasets li {
