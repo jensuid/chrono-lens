@@ -23,30 +23,16 @@ function onDrop(event) {
 function onFileInput(event) {
   const f = event.target.files?.[0]
   if (f) pickFile(f)
+  // Allow picking the same file again to retry after an error.
+  event.target.value = ''
 }
 
-async function pickFile(f) {
+function pickFile(f) {
   error.value = ''
   preview.value = null
   sheets.value = null
   sheet.value = ''
   file.value = f
-  // Excel files: fetch sheet names for the picker.
-  if (/\.xlsx?$/i.test(f.name)) {
-    try {
-      // The backend reads sheet names through the upload response; the
-      // import UI lists them after a first parse attempt.
-      const buf = await f.arrayBuffer()
-      const form = new FormData()
-      form.append('file', new File([buf], f.name))
-      const meta = await uploadFile(f)
-      preview.value = meta
-      sheets.value = null
-    } catch (e) {
-      error.value = e.message
-      file.value = null
-    }
-  }
 }
 
 async function doImport() {

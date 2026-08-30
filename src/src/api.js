@@ -55,11 +55,38 @@ async function postJson(path, payload) {
   })
 }
 
+function uploadFileViaXhr(url, form) {
+  // WKWebView (the packaged app's webview) fails fetch() with "Load
+  // failed" when the body is a FormData containing a File — a known
+  // WebKit bug. XHR handles multipart uploads fine, so uploads use it
+  // unconditionally; it behaves identically in the browser.
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', url)
+    xhr.responseType = 'json'
+    xhr.onload = () => {
+      const body = xhr.response
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(body)
+      } else {
+        const err = body?.error ?? {}
+        const error = new Error(err.message ?? `request failed: ${xhr.status}`)
+        error.code = err.code
+        error.status = xhr.status
+        reject(error)
+      }
+    }
+    xhr.onerror = () => reject(new Error('Load failed'))
+    xhr.send(form)
+  })
+}
+
 async function uploadFile(file, sheet = null) {
   const form = new FormData()
   form.append('file', file, file.name)
   if (sheet) form.append('sheet', sheet)
-  return request('/api/datasets', { method: 'POST', body: form })
+  const url = `${await base()}/api/datasets`
+  return uploadFileViaXhr(url, form)
 }
 
 async function deleteDataset(id) {
