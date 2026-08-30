@@ -88,9 +88,9 @@ echo "anomalies flagged: $ANOM"
 # --- graceful quit reaps the sidecar ---------------------------------------------
 osascript -e 'tell application "ChronoLens" to quit' 2>/dev/null || true
 sleep 5
-# grep exits 1 on zero matches, which set -e would treat as failure;
-# `|| true` keeps the count (0) flowing.
-LEFT=$(ps aux | grep "[c]hronolens-backend" | wc -l | tr -d ' ' || true)
+# Count only real sidecar executables — not this script or shells whose
+# command lines merely mention the name.
+LEFT=$(ps -axo comm= | grep -c "^.*chronolens-backend$" || true)
 LEFT=${LEFT:-0}
 if [ "$LEFT" = "0" ]; then
   echo "PASS: no orphan sidecar after quit"

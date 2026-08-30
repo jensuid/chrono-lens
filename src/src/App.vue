@@ -52,18 +52,29 @@ async function selectDataset(id) {
   }
 }
 
+// Two-step inline delete: WKWebView in the packaged app never shows
+// native confirm()/alert() dialogs (silent no-ops), so deletion confirms
+// in-app — first click arms the button, second click deletes; clicking
+// anywhere else disarms.
+const pendingDeleteId = ref(null)
+const deleteError = ref('')
+
+function armDelete(d) {
+  pendingDeleteId.value = d.id
+  deleteError.value = ''
+}
+
 async function removeDataset(d) {
-  const label = d.name || d.id
-  if (!confirm(`Delete dataset "${label}"? This cannot be undone.`)) return
   try {
     await deleteDataset(d.id)
     datasets.value = datasets.value.filter((x) => x.id !== d.id)
+    pendingDeleteId.value = null
     if (dataset.value?.id === d.id) {
       dataset.value = null
       view.value = 'import'
     }
   } catch (e) {
-    alert(`Could not delete "${label}": ${e.message}`)
+    deleteError.value = `Could not delete "${d.name || d.id}": ${e.message}`
   }
 }
 
@@ -131,25 +142,32 @@ onUnmounted(() => {
         </button>
       </nav>
 
-      <div class="datasets" v-if="backendReady">
+      <div class="datasets" v-if="backendReady" @click="pendingDeleteId = null">
         <label>Datasets</label>
         <ul>
           <li
             v-for="d in datasets"
             :key="d.id"
-            :class="{ selected: dataset && dataset.id === d.id }"
+            :class="{ selected: dataset && dataset.id === d.id, armed: pendingDeleteId === d.id }"
+            @click.stop="pendingDeleteId === d.id || selectDataset(d.id)"
           >
-            <div class="drow" @click="selectDataset(d.id)">
-              <span class="dname" :title="d.name || d.id">{{ d.name || d.id }}</span>
+            <div class="drow" :title="d.name || d.id">
+              <span class="dname">{{ d.name || d.id }}</span>
               <small>{{ d.rows }} rows · {{ new Date(d.timeRange.first).toLocaleDateString() }} – {{ new Date(d.timeRange.last).toLocaleDateString() }}</small>
             </div>
+            <template v-if="pendingDeleteId === d.id">
+              <button class="del confirm" @click.stop="removeDataset(d)">delete</button>
+              <button class="del cancel" @click.stop="pendingDeleteId = null">cancel</button>
+            </template>
             <button
+              v-else
               class="del"
               :title="`Delete ${d.name || d.id}`"
-              @click.stop="removeDataset(d)"
+              @click.stop="armDelete(d)"
             >✕</button>
           </li>
         </ul>
+        <p v-if="deleteError" class="error small">{{ deleteError }}</p>
         <p v-if="!datasets.length" class="none-yet">no datasets imported yet</p>
       </div>
     </aside>
@@ -211,8 +229,16 @@ nav button.disabled { opacity: 0.45; }
   border: none; background: none; color: var(--muted);
   font-size: 12px; padding: 2px 5px; line-height: 1; border-radius: 4px;
 }
+.datasets li.armed { border-color: var(--danger); background: #fff5f7; }
 .datasets .del:hover { color: var(--danger); background: #ffe4e9; border: none; }
+.datasets .del.confirm {
+  background: var(--danger); color: #fff; border: none;
+  font-size: 11px; padding: 3px 8px;
+}
+.datasets .del.confirm:hover { background: #be123c; color: #fff; }
+.datasets .del.cancel { font-size: 11px; padding: 3px 6px; }
 .datasets .none-yet { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
+.error.small { font-size: 12px; padding: 6px 8px; margin: 6px 0 0; }
 .loading { color: var(--muted); display: flex; gap: 8px; align-items: center; }
 .hint-footer { margin-top: auto; font-size: 11px; }
 .hint-footer a { color: var(--muted); cursor: pointer; text-decoration: underline dotted; }
