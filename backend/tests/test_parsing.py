@@ -122,3 +122,35 @@ def test_delete(client, csv_dataset):
 def test_unknown_dataset_404(client):
     response = client.get("/api/datasets/doesnotexist")
     assert response.status_code == 404
+
+
+def test_upload_stores_source_filename(client):
+    from .conftest import SAMPLES
+
+    with open(SAMPLES / "daily_metrics.csv", "rb") as f:
+        response = client.post(
+            "/api/datasets", files={"file": ("my-series.csv", f, "text/csv")}
+        )
+    body = response.json()
+    assert body["name"] == "my-series.csv"
+    listed = client.get("/api/datasets").json()
+    assert listed[0]["name"] == "my-series.csv"
+
+
+def test_datasets_listed_newest_first(client):
+    import time
+
+    from .conftest import SAMPLES
+
+    ids = []
+    for i in range(3):
+        with open(SAMPLES / "daily_metrics.csv", "rb") as f:
+            response = client.post(
+                "/api/datasets",
+                files={"file": (f"series-{i}.csv", f, "text/csv")},
+            )
+        ids.append(response.json()["id"])
+        time.sleep(0.05)  # ensure distinct mtimes on coarse filesystems
+    listed = client.get("/api/datasets").json()
+    listed_ids = [d["id"] for d in listed]
+    assert listed_ids.index(ids[-1]) < listed_ids.index(ids[0])

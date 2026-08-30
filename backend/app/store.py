@@ -41,12 +41,36 @@ def _data_dir() -> Path:
     return root
 
 
+def _source_name_path(data_dir: Path, dataset_id: str) -> Path:
+    """Sidecar holding the original upload filename."""
+    return data_dir / f"{dataset_id}.source.json"
+
+
+def _read_source_name(data_dir: Path, dataset_id: str) -> str:
+    import json
+
+    path = _source_name_path(data_dir, dataset_id)
+    if path.exists():
+        try:
+            return str(json.loads(path.read_text()).get("name", ""))
+        except (json.JSONDecodeError, OSError):
+            return ""
+    return ""
+
+
 class Dataset:
     """One stored dataset: its frame plus cached metadata."""
 
-    def __init__(self, dataset_id: str, frame: pd.DataFrame, warnings: list[str]):
+    def __init__(
+        self,
+        dataset_id: str,
+        frame: pd.DataFrame,
+        warnings: list[str],
+        source_name: str = "",
+    ):
         self.id = dataset_id
         self.warnings = warnings
+        self.source_name = source_name
         self._frame = frame
 
     # -- loading -----------------------------------------------------------
@@ -64,16 +88,23 @@ class Dataset:
         warnings = []
         if warnings_path.exists():
             warnings = json.loads(warnings_path.read_text())
-        return cls(dataset_id, frame, warnings)
+        source_name = _read_source_name(_data_dir(), dataset_id)
+        return cls(dataset_id, frame, warnings, source_name)
 
-    def save(self) -> None:
-        """Persist the frame and warnings."""
+    def save(self, source_name: str | None = None) -> None:
+        """Persist the frame, warnings, and source filename."""
         import json
 
-        path = _data_dir() / f"{self.id}.parquet"
+        data_dir = _data_dir()
+        path = data_dir / f"{self.id}.parquet"
         self._frame.to_parquet(path)
-        (_data_dir() / f"{self.id}.warnings.json").write_text(
+        (data_dir / f"{self.id}.warnings.json").write_text(
             json.dumps(self.warnings)
+        )
+        if source_name is not None:
+            self.source_name = source_name
+        _source_name_path(data_dir, self.id).write_text(
+            json.dumps({"name": self.source_name})
         )
 
     def delete(self) -> None:
@@ -116,41 +147,50 @@ def _datetime_column(frame: pd.DataFrame) -> object:
     raise not_found("dataset has no datetime column")
 
 
-def create_dataset(frame: pd.DataFrame, warnings: list[str]) -> Dataset:
+def create_dataset(
+    frame: pd.DataFrame, warnings: list[str], source_name: str = ""
+) -> Dataset:
     """Persist a new dataset under a fresh id."""
     dataset_id = uuid.uuid4().hex[:12]
-    ds = Dataset(dataset_id, frame, warnings)
-    ds.save()
+    ds = Dataset(dataset_id, frame, warnings, source_name)
+    ds.save(source_name=source_name)
     return ds
 
 
 def list_datasets() -> list[dict]:
-    """Minimal metadata for every stored dataset.
+    """Minimal metadata for every stored dataset, newest first.
 
-    Reads only the small warnings sidecar plus parquet *metadata*
-    (row count/dtypes) instead of loading every full frame — listing
-    must stay fast as datasets accumulate.
+    Reads only the small sidecars plus parquet *metadata* (row count)
+    instead of loading every full frame — listing must stay fast as
+    datasets accumulate. Sorted by file modification time so recently
+    imported datasets appear first.
     """
     import json
 
     import pyarrow.parquet as pq
 
+    data_dir = _data_dir()
     out = []
-    for path in sorted(_data_dir().glob("*.parquet")):
+    for path in data_dir.glob("*.parquet"):
         dataset_id = path.stem
         warnings: list = []
-        warnings_path = _data_dir() / f"{dataset_id}.warnings.json"
+        warnings_path = data_dir / f"{dataset_id}.warnings.json"
         if warnings_path.exists():
             warnings = json.loads(warnings_path.read_text())
         meta = pq.read_metadata(path)
         out.append(
             {
                 "id": dataset_id,
+                "name": _read_source_name(data_dir, dataset_id),
                 "rows": meta.num_rows,
                 "warnings": warnings,
                 "timeRange": _parquet_time_range(path),
+                "mtime": path.stat().st_mtime,
             }
         )
+    out.sort(key=lambda d: d["mtime"], reverse=True)
+    for entry in out:
+        entry.pop("mtime", None)
     return out
 
 

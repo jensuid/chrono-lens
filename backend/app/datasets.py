@@ -23,7 +23,7 @@ async def upload(
             f"file exceeds {MAX_UPLOAD_BYTES // (1024 * 1024)} MiB cap",
         )
     frame, warnings = parsing.parse_upload(raw, file.filename or "upload", sheet)
-    ds = create_dataset(frame, warnings)
+    ds = create_dataset(frame, warnings, source_name=file.filename or "upload")
     return _meta(ds)
 
 
@@ -66,6 +66,7 @@ def _meta(ds: Dataset) -> dict:
     time = ds.time_range()
     return {
         "id": ds.id,
+        "name": ds.source_name,
         "rows": int(len(frame)),
         "columns": ds.column_labels(),
         "numericColumns": [

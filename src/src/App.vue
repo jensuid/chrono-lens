@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
-import { getJson } from './api.js'
+import { getJson, deleteDataset } from './api.js'
 import { getLog } from './debug.js'
 import ImportView from './views/ImportView.vue'
 import ExploreView from './views/ExploreView.vue'
@@ -40,11 +40,30 @@ function onImported(meta) {
   refreshDatasets()
 }
 
-function selectDataset(id) {
-  const found = datasets.value.find((d) => d.id === id)
-  if (found) {
-    dataset.value = found
+async function selectDataset(id) {
+  // List entries are summary-only; fetch full metadata (columns, dtypes,
+  // missing) so the analysis views get everything they need.
+  try {
+    dataset.value = await getJson(`/api/datasets/${id}`)
     if (view.value === 'import') view.value = 'explore'
+  } catch (e) {
+    // Stale list entry (deleted on disk): drop it.
+    datasets.value = datasets.value.filter((x) => x.id !== id)
+  }
+}
+
+async function removeDataset(d) {
+  const label = d.name || d.id
+  if (!confirm(`Delete dataset "${label}"? This cannot be undone.`)) return
+  try {
+    await deleteDataset(d.id)
+    datasets.value = datasets.value.filter((x) => x.id !== d.id)
+    if (dataset.value?.id === d.id) {
+      dataset.value = null
+      view.value = 'import'
+    }
+  } catch (e) {
+    alert(`Could not delete "${label}": ${e.message}`)
   }
 }
 
@@ -119,12 +138,19 @@ onUnmounted(() => {
             v-for="d in datasets"
             :key="d.id"
             :class="{ selected: dataset && dataset.id === d.id }"
-            @click="selectDataset(d.id)"
           >
-            {{ d.timeRange.column }} · {{ d.rows }} rows
-            <small>{{ new Date(d.timeRange.first).toLocaleDateString() }} – {{ new Date(d.timeRange.last).toLocaleDateString() }}</small>
+            <div class="drow" @click="selectDataset(d.id)">
+              <span class="dname" :title="d.name || d.id">{{ d.name || d.id }}</span>
+              <small>{{ d.rows }} rows · {{ new Date(d.timeRange.first).toLocaleDateString() }} – {{ new Date(d.timeRange.last).toLocaleDateString() }}</small>
+            </div>
+            <button
+              class="del"
+              :title="`Delete ${d.name || d.id}`"
+              @click.stop="removeDataset(d)"
+            >✕</button>
           </li>
         </ul>
+        <p v-if="!datasets.length" class="none-yet">no datasets imported yet</p>
       </div>
     </aside>
 
@@ -172,10 +198,21 @@ nav button.disabled { opacity: 0.45; }
   border-radius: 8px;
   cursor: pointer;
   font-size: 13px;
-  display: flex; flex-direction: column; gap: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .datasets li.selected { border-color: var(--accent); }
+.datasets .drow { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.datasets .dname { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .datasets small { color: var(--muted); font-size: 11px; }
+.datasets .del {
+  flex: none;
+  border: none; background: none; color: var(--muted);
+  font-size: 12px; padding: 2px 5px; line-height: 1; border-radius: 4px;
+}
+.datasets .del:hover { color: var(--danger); background: #ffe4e9; border: none; }
+.datasets .none-yet { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
 .loading { color: var(--muted); display: flex; gap: 8px; align-items: center; }
 .hint-footer { margin-top: auto; font-size: 11px; }
 .hint-footer a { color: var(--muted); cursor: pointer; text-decoration: underline dotted; }
