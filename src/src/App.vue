@@ -1,11 +1,13 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { getJson } from './api.js'
+import { getLog } from './debug.js'
 import ImportView from './views/ImportView.vue'
 import ExploreView from './views/ExploreView.vue'
 import DecomposeView from './views/DecomposeView.vue'
 import ForecastView from './views/ForecastView.vue'
 import AnomaliesView from './views/AnomaliesView.vue'
+import DebugConsole from './components/DebugConsole.vue'
 
 // Current dataset metadata (null until one is imported/selected).
 const dataset = ref(null)
@@ -13,6 +15,12 @@ const datasets = ref([])
 const view = ref('import')
 const backendReady = ref(false)
 const backendError = ref('')
+const showDebug = ref(false)
+const dbg = ref(null)
+
+function toggleDebug() {
+  showDebug.value = !showDebug.value
+}
 
 const views = [
   { id: 'import', label: 'Import', component: ImportView },
@@ -58,7 +66,16 @@ async function waitForBackend() {
   throw lastError ?? new Error('timed out')
 }
 
+function onKeydown(e) {
+  // Cmd/Ctrl+Shift+D toggles the diagnostics console.
+  if (e.key.toLowerCase() === 'd' && e.shiftKey && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault()
+    toggleDebug()
+  }
+}
+
 onMounted(async () => {
+  window.addEventListener('keydown', onKeydown)
   try {
     await waitForBackend()
     backendReady.value = true
@@ -66,6 +83,10 @@ onMounted(async () => {
   } catch (e) {
     backendError.value = `backend not reachable: ${e.message}`
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
 })
 </script>
 
@@ -108,8 +129,18 @@ onMounted(async () => {
     </aside>
 
     <main>
-      <component :is="views.find((v) => v.id === view).component" :dataset="dataset" @imported="onImported" />
+      <component
+        :is="views.find((v) => v.id === view).component"
+        :dataset="dataset"
+        :backend-ready="backendReady"
+        @imported="onImported"
+      />
     </main>
+
+    <DebugConsole :open="showDebug" @close="showDebug = false" />
+    <footer class="hint-footer">
+      <a @click.prevent="toggleDebug">diagnostics (⌘⇧D)</a>
+    </footer>
   </div>
 </template>
 
@@ -143,5 +174,7 @@ nav button.disabled { opacity: 0.45; }
 .datasets li.selected { border-color: var(--accent); }
 .datasets small { color: var(--muted); font-size: 11px; }
 .loading { color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.hint-footer { margin-top: auto; font-size: 11px; }
+.hint-footer a { color: var(--muted); cursor: pointer; text-decoration: underline dotted; }
 main { flex: 1; overflow-y: auto; padding: 20px 24px; }
 </style>

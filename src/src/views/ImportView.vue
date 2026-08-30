@@ -4,7 +4,10 @@ import { computed, ref } from 'vue'
 import { uploadFile, getJson } from '../api.js'
 
 const emit = defineEmits(['imported'])
-const props = defineProps({ dataset: { type: Object, default: null } })
+const props = defineProps({
+  dataset: { type: Object, default: null },
+  backendReady: { type: Boolean, default: true },
+})
 
 const file = ref(null)
 const sheet = ref('')
@@ -13,7 +16,7 @@ const uploading = ref(false)
 const error = ref('')
 const preview = ref(null)
 
-const canImport = computed(() => !!file.value)
+const canImport = computed(() => !!file.value && props.backendReady)
 
 function onDrop(event) {
   const files = event.dataTransfer?.files
@@ -88,9 +91,9 @@ async function loadPreview(meta) {
     <div v-if="error" class="error">{{ error }}</div>
 
     <div class="row" v-if="file">
-      <button class="primary" :disabled="uploading" @click="doImport">
+      <button class="primary" :disabled="!canImport || uploading" @click="doImport">
         <span v-if="uploading" class="spinner"></span>
-        Import
+        {{ backendReady ? 'Import' : 'Import (waiting for backend…)' }}
       </button>
     </div>
 

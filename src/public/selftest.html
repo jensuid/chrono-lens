@@ -1,0 +1,95 @@
+<!doctype html>
+<!-- WKWebView network self-test: loads in the packaged app's webview and
+     exercises exactly the network paths the app uses (GET + XHR POST
+     multipart + fetch POST multipart), writing results to the DOM.
+     Opened by the in-app diagnostics console with ?port=<backend port>.
+     Screenshot the results and share them to diagnose "Load failed". -->
+<html>
+<head>
+<meta charset="utf-8">
+<title>ChronoLens network self-test</title>
+<style>
+  body { font: 13px ui-monospace, monospace; background: #10151f; color: #dce; padding: 24px; }
+  .ok { color: #6c6; } .bad { color: #f77; } h1 { font-size: 16px; }
+  #out { white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>ChronoLens network self-test</h1>
+<p id="port">resolving port…</p>
+<div id="out"></div>
+<script>
+const out = (s, cls = '') => {
+  const el = document.getElementById('out')
+  const div = document.createElement('div')
+  if (cls) div.className = cls
+  div.textContent = s
+  el.appendChild(div)
+}
+const portEl = document.getElementById('port')
+
+const params = new URLSearchParams(location.search)
+let port = params.get('port')
+
+async function getPort() {
+  if (port) return port
+  // Fallback: the Tauri invoke API exposed on the window object.
+  try {
+    const p = await window.__TAURI_INTERNALS__.invoke('backend_port')
+    return p
+  } catch (e) {
+    out('invoke backend_port failed: ' + e, 'bad')
+    return null
+  }
+}
+
+function testGet(base) {
+  return fetch(base + '/api/health')
+    .then((r) => r.text().then((t) => out('GET /api/health -> ' + r.status + ' ' + t, r.ok ? 'ok' : 'bad')))
+    .catch((e) => out('GET /api/health -> ' + e, 'bad'))
+}
+
+function testXhrUpload(base) {
+  const csv = 'timestamp,value\n2023-01-01,1\n2023-01-02,2\n2023-01-03,3\n2023-01-04,4\n'
+  const form = new FormData()
+  form.append('file', new File([csv], 'selftest.csv', { type: 'text/csv' }))
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', base + '/api/datasets')
+    xhr.onload = () => {
+      out('XHR upload -> ' + xhr.status + ': ' + String(xhr.response).slice(0, 140), xhr.status >= 200 && xhr.status < 300 ? 'ok' : 'bad')
+      resolve()
+    }
+    xhr.onerror = () => {
+      out('XHR upload -> onerror (network-level: refused / CORS / body rejected)', 'bad')
+      resolve()
+    }
+    xhr.send(form)
+  })
+}
+
+function testFetchUpload(base) {
+  const csv = 'timestamp,value\n2023-01-01,1\n2023-01-02,2\n2023-01-03,3\n2023-01-04,4\n'
+  const form = new FormData()
+  form.append('file', new File([csv], 'selftest2.csv', { type: 'text/csv' }))
+  return fetch(base + '/api/datasets', { method: 'POST', body: form })
+    .then((r) => r.text().then((t) => out('fetch upload -> ' + r.status + ': ' + t.slice(0, 140), r.ok ? 'ok' : 'bad')))
+    .catch((e) => out('fetch upload -> ' + e + (String(e).includes('Load failed') ? '  <- the known WKWebView bug' : ''), 'bad'))
+}
+
+getPort().then((p) => {
+  if (!p) {
+    portEl.textContent = 'no port provided and invoke unavailable'
+    return
+  }
+  port = p
+  portEl.textContent = 'sidecar port: ' + p
+  const base = 'http://127.0.0.1:' + p
+  return testGet(base)
+    .then(() => testXhrUpload(base))
+    .then(() => testFetchUpload(base))
+    .then(() => out('done'))
+})
+</script>
+</body>
+</html>
