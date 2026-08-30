@@ -40,9 +40,27 @@ function selectDataset(id) {
   }
 }
 
+async function waitForBackend() {
+  // The sidecar takes ~25-60s to unpack on first launch; poll until it
+  // answers rather than showing a permanent error on the first failed
+  // health check.
+  const deadline = Date.now() + 120_000
+  let lastError = null
+  while (Date.now() < deadline) {
+    try {
+      await getJson('/api/health')
+      return
+    } catch (e) {
+      lastError = e
+      await new Promise((r) => setTimeout(r, 2000))
+    }
+  }
+  throw lastError ?? new Error('timed out')
+}
+
 onMounted(async () => {
   try {
-    await getJson('/api/health')
+    await waitForBackend()
     backendReady.value = true
     await refreshDatasets()
   } catch (e) {

@@ -41,6 +41,14 @@ for _ in $(seq 1 45); do
 done
 [ -n "${R:-}" ] || { echo "FAIL: backend never became healthy"; exit 1; }
 
+# --- CORS: the webview origin must be allowed (regression: "Load failed") ---
+ALLOWED=$(curl -s -o /dev/null -w "%{header_json}" --max-time 5 \
+  -H "Origin: tauri://localhost" \
+  "http://127.0.0.1:$PORT/api/health" \
+  | python3 -c "import json,sys; print(json.load(sys.stdin).get('access-control-allow-origin', [''])[0])")
+[ "$ALLOWED" = "tauri://localhost" ] || { echo "FAIL: webview origin blocked by CORS (got '$ALLOWED')"; exit 1; }
+echo "CORS ok: webview origin tauri://localhost allowed"
+
 # --- uploads (all three formats) --------------------------------------------
 for f in daily_metrics.csv sensor_feed.json sales.xlsx; do
   U=$(curl -s --max-time 90 -F "file=@sample_data/$f" "http://127.0.0.1:$PORT/api/datasets")

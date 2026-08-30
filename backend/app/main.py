@@ -9,12 +9,20 @@ from .errors import ApiError
 
 app = FastAPI(title="ChronoLens backend", version="0.1.0")
 
-# Dev only: the Vite dev server on :5173 calls the API cross-origin. The
-# packaged app talks to 127.0.0.1 directly (same-origin through the
-# sidecar), so this does not weaken the shipped posture.
+# Origins allowed to call this local-only API:
+# - the Vite dev server (:5173) during `npm run dev`
+# - the packaged app's WKWebView, whose page origin is `tauri://localhost`
+# The server binds 127.0.0.1 only, so nothing outside this machine can
+# reach it regardless.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "tauri://localhost",
+        "http://tauri.localhost",
+        "https://tauri.localhost",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
