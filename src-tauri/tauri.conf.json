@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ChronoLens",
+  "version": "0.1.0",
+  "identifier": "com.chronolens.app",
+  "build": {
+    "beforeDevCommand": "cd ../src && npm run dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "cd ../src && npm run build",
+    "frontendDist": "../src/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "ChronoLens — Time Series Analysis",
+        "width": 1280,
+        "height": 860,
+        "minWidth": 960,
+        "minHeight": 640
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app"],
+    "icon": [
+      "icons/icon.icns"
+    ],
+    "externalBin": [
+      "binaries/chronolens-backend"
+    ]
+  }
+}

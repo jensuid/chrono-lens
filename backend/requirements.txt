@@ -1,0 +1,30 @@
+# ChronoLens backend runtime dependencies.
+# Python 3.11 (miniconda base on the target machine).
+
+# HTTP service layer
+fastapi>=0.115,<1
+uvicorn>=0.32,<1
+python-multipart>=0.0.12,<0.1     # multipart/form-data uploads
+pydantic>=2.9,<3
+
+# Data manipulation
+pandas>=2.2,<3
+numpy>=1.26,<2.3
+
+# Statistics and modeling
+scipy>=1.14,<2
+statsmodels>=0.14,<0.15
+
+# Excel readers (xlrd 2.x reads legacy .xls only; openpyxl reads .xlsx)
+openpyxl>=3.1,<4
+xlrd==2.0.1
+
+# Parquet persistence for uploaded datasets
+pyarrow>=17,<21
+
+# Frozen-binary packaging
+pyinstaller>=6.10,<7
+
+# Test dependencies
+pytest>=8,<9
+httpx>=0.27,<1

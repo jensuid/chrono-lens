@@ -1,0 +1,28 @@
+# Python
+backend/.venv/
+backend/dist/
+backend/build/
+backend/.freeze-hash
+*.pyc
+__pycache__/
+.pytest_cache/
+
+# Node
+src/node_modules/
+src/dist/
+
+# Tauri / Rust
+src-tauri/target/
+src-tauri/binaries/
+src-tauri/gen/
+
+# Cargo home redirected into the workspace during builds
+.cargo-home/
+
+# macOS
+.DS_Store
+
+# App runtime data (datasets uploaded inside the app)
+appdata/
+backend/appdata/
+*.app

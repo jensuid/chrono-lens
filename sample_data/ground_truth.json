@@ -1,0 +1,47 @@
+{
+ "seed": 42,
+ "period": 7,
+ "nRows": 730,
+ "missingCount": 15,
+ "anomalies": [
+  {
+   "index": 120,
+   "kind": "spike",
+   "magnitude": 45,
+   "timestamp": "2023-05-01"
+  },
+  {
+   "index": 365,
+   "kind": "spike",
+   "magnitude": 55,
+   "timestamp": "2024-01-01"
+  },
+  {
+   "index": 610,
+   "kind": "spike",
+   "magnitude": 65,
+   "timestamp": "2024-09-02"
+  },
+  {
+   "index": 200,
+   "kind": "level_shift",
+   "magnitude": -30,
+   "length": 14,
+   "timestamp": "2023-07-20"
+  },
+  {
+   "index": 430,
+   "kind": "level_shift",
+   "magnitude": -35,
+   "length": 14,
+   "timestamp": "2024-03-06"
+  },
+  {
+   "index": 650,
+   "kind": "level_shift",
+   "magnitude": -40,
+   "length": 14,
+   "timestamp": "2024-10-12"
+  }
+ ]
+}
