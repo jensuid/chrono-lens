@@ -1,16 +1,19 @@
 // Webview-side request debugger: captures every API call's method, URL,
-// timing, and outcome into a global log the in-app debug console renders.
-// Enabled by launching the app with CHRONOLENS_DEBUG=1 or the
-// ?debug URL param; always active in the packaged app build so field
-// reports include a trace.
+// timing, and outcome into a reactive log the in-app debug console
+// renders. Always active in the packaged app build so field reports
+// include a trace.
+import { ref } from 'vue'
 
-const log = []
 const LOG_MAX = 200
+
+// Reactive so the diagnostics console updates live while open — a plain
+// array would never re-render mid-session (the network test's output
+// would silently never appear).
+const log = ref([])
 
 function record(entry) {
   const stamped = { at: new Date().toISOString(), ...entry }
-  log.push(stamped)
-  if (log.length > LOG_MAX) log.shift()
+  log.value = [...log.value.slice(-(LOG_MAX - 1)), stamped]
   console.log('[chrono]', stamped.event, stamped.detail ?? '')
   return stamped
 }
@@ -19,7 +22,7 @@ function record(entry) {
 export { record }
 
 export function getLog() {
-  return [...log]
+  return log.value
 }
 
 export async function tracedFetch(label, url, options = {}) {

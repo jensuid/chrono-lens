@@ -7,13 +7,14 @@
 // new-window handling — a silent no-op). It exercises exactly the
 // transports the app uses: fetch GET, XHR multipart upload, fetch
 // multipart upload, and deletes the datasets it creates.
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { getLog, record } from '../debug.js'
 import { baseUrl, deleteDataset } from '../api.js'
 
 const props = defineProps({ open: Boolean })
 
-const entries = computed(() => (props.open ? getLog() : []))
+// getLog() returns the reactive array — entries update live while open.
+const entries = getLog()
 const testing = ref(false)
 
 const TEST_CSV = 'timestamp,value\n2023-01-01,1\n2023-01-02,2\n2023-01-03,3\n2023-01-04,4\n'
