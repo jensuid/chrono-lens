@@ -66,4 +66,9 @@ async function deleteDataset(id) {
   return request(`/api/datasets/${id}`, { method: 'DELETE' })
 }
 
-export { getJson, postJson, uploadFile, deleteDataset }
+/** The resolved backend base URL ("" in dev — relative via proxy). */
+async function baseUrl() {
+  return base()
+}
+
+export { getJson, postJson, uploadFile, deleteDataset, baseUrl }

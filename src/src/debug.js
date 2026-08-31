@@ -15,6 +15,9 @@ function record(entry) {
   return stamped
 }
 
+/** Append a custom entry (used by the in-console network self-test). */
+export { record }
+
 export function getLog() {
   return [...log]
 }

@@ -128,8 +128,7 @@ onUnmounted(() => {
         <p class="tagline">time series analysis</p>
       </header>
 
-      <div v-if="!backendReady && backendError" class="error">{{ backendError }}</div>
-      <div v-else-if="!backendReady" class="loading"><span class="spinner"></span> starting backend…</div>
+      <div v-if="backendReady && backendError" class="error">{{ backendError }}</div>
 
       <nav>
         <button
@@ -170,6 +169,11 @@ onUnmounted(() => {
         <p v-if="deleteError" class="error small">{{ deleteError }}</p>
         <p v-if="!datasets.length" class="none-yet">no datasets imported yet</p>
       </div>
+
+      <footer class="side-footer">
+        <span class="status-dot" :class="backendReady ? 'ok' : 'busy'" title="backend status"></span>
+        <a @click.prevent="toggleDebug">diagnostics (⌘⇧D)</a>
+      </footer>
     </aside>
 
     <main>
@@ -182,9 +186,6 @@ onUnmounted(() => {
     </main>
 
     <DebugConsole :open="showDebug" @close="showDebug = false" />
-    <footer class="hint-footer">
-      <a @click.prevent="toggleDebug">diagnostics (⌘⇧D)</a>
-    </footer>
   </div>
 </template>
 
@@ -240,7 +241,23 @@ nav button.disabled { opacity: 0.45; }
 .datasets .none-yet { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
 .error.small { font-size: 12px; padding: 6px 8px; margin: 6px 0 0; }
 .loading { color: var(--muted); display: flex; gap: 8px; align-items: center; }
-.hint-footer { margin-top: auto; font-size: 11px; }
-.hint-footer a { color: var(--muted); cursor: pointer; text-decoration: underline dotted; }
+.side-footer {
+  margin-top: auto;               /* pins to the sidebar bottom */
+  display: flex; align-items: center; gap: 8px;
+  padding-top: 12px; border-top: 1px solid var(--border);
+  font-size: 11px;
+}
+.side-footer a { color: var(--muted); cursor: pointer; text-decoration: underline dotted; }
+.side-footer a:hover { color: var(--accent); }
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex: none;
+}
+.status-dot.ok { background: var(--ok); }
+.status-dot.busy {
+  background: var(--accent-2);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.status-dot.err { background: var(--danger); }
+@keyframes pulse { 50% { opacity: 0.25; } }
 main { flex: 1; overflow-y: auto; padding: 20px 24px; }
 </style>
